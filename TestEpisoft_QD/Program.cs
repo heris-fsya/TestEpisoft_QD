@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using TestEpisoft_QD.Models;
-using TestEpisoft_QD.Services;
+using TestEpisoft.Models;
+using TestEpisoft.Services;
 
-namespace TestEpisoft_QD
+namespace TestEpisoft
 {
     class Program
     {
@@ -13,9 +13,6 @@ namespace TestEpisoft_QD
 
             var bankTransactions = reader.ReadTransactions("Data/bank.csv", "Bank");
             var accountingTransactions = reader.ReadTransactions("Data/accounting.csv", "Accounting");
-            var engine = new ReconciliationEngine();
-
-            var matches = engine.Reconcile(bankTransactions, accountingTransactions);
 
             Console.WriteLine("=== BANK TRANSACTIONS ===");
 
@@ -37,32 +34,6 @@ namespace TestEpisoft_QD
             Console.WriteLine($"Total Accounting : {accountingTransactions.Count}");
 
             Console.ReadLine();
-
-            Console.WriteLine();
-            Console.WriteLine("=== MATCH RESULTS ===");
-
-            foreach (var m in matches)
-            {
-                Console.WriteLine(
-                    $"{m.BankTransaction.Id} -> {m.AccountingTransaction.Id} | " +
-                    $"Score: {m.Score} | Rule: {m.RuleApplied} | Ambiguous: {m.IsAmbiguous}");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine($"Total Matches : {matches.Count}");
-
-
-            var exporter = new MatchExporter();
-            exporter.ExportMatches("matches.csv", matches);
-
-            var report = new ReportGenerator();
-            report.GenerateReport(
-                "report.txt",
-                bankTransactions,
-                accountingTransactions,
-                matches);
-
-            Console.WriteLine("Fichiers générés : matches.csv et report.txt");
         }
     }
 }

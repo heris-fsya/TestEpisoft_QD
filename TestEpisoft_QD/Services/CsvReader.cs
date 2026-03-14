@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using TestEpisoft_QD.Models;
+using TestEpisoft.Models;
 
-namespace TestEpisoft_QD.Services
+namespace TestEpisoft.Services
 {
-
     public class CsvReader
     {
         public List<Transaction> ReadTransactions(string path, string source)
@@ -27,7 +26,7 @@ namespace TestEpisoft_QD.Services
                 return transactions;
             }
 
-            // Vérification du header
+            // VÃ©rification du header
             if (!lines[0].Contains("Date") || !lines[0].Contains("Amount"))
             {
                 Console.WriteLine($"Erreur : header invalide dans {path}");

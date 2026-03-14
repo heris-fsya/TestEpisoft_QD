@@ -1,6 +1,6 @@
 using System;
 
-namespace TestEpisoft_QD.Models
+namespace TestEpisoft.Models
 {
     public class Transaction
     {
