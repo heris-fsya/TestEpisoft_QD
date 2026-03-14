@@ -48,7 +48,11 @@ namespace TestEpisoft_QD.Services
             {
                 foreach (var a in ambiguous)
                 {
-                    report.Add($"BankId : {a.BankTransaction.Id} -> AccountingId choisi : {a.AccountingTransaction.Id}");
+                   
+                        report.Add($"BankId : {a.BankTransaction.Id} -> AccountingId possible : {string.Join(",", a.CandidateAccountingIds)} -> AccountingId choisi : {a.AccountingTransaction.Id}");
+                  
+                  
+
                 }
             }
 

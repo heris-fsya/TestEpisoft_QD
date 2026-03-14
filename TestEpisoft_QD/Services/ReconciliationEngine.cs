@@ -11,59 +11,62 @@ namespace TestEpisoft_QD.Services
             List<Transaction> bankTransactions,
             List<Transaction> accountingTransactions)
         {
-            var results = new List<MatchResult>();
+            var allCandidates = new List<MatchResult>();
 
-            var availableAccounting = new List<Transaction>(accountingTransactions);
-
+            // Générer tous les candidats
             foreach (var bank in bankTransactions)
             {
-                var candidates = new List<MatchResult>();
-
-                foreach (var acc in availableAccounting)
+                foreach (var acc in accountingTransactions)
                 {
                     var match = Evaluate(bank, acc);
 
                     if (match != null)
-                        candidates.Add(match);
+                        allCandidates.Add(match);
                 }
+            }
 
-                if (candidates.Count == 0)
-                    continue;
-
-                var best = candidates
-                    .OrderByDescending(c => c.Score)
-                    .ThenBy(c => Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days))
-                    .ThenBy(c => Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount))
-                    .ThenBy(c => c.AccountingTransaction.Id)
-                    .ToList();
-
-                
-
-                var chosen = best.First();
-
-                var bestScore = chosen.Score;
-                var bestDateDiff = Math.Abs((chosen.BankTransaction.Date - chosen.AccountingTransaction.Date).Days);
-                var bestAmountDiff = Math.Abs(chosen.BankTransaction.Amount - chosen.AccountingTransaction.Amount);
-
-                var ambiguousCandidates = best
-                    .Where(c =>
-                        c.Score == bestScore &&
-                        Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days) == bestDateDiff &&
-                        Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount) == bestAmountDiff)
-                    .ToList();
-                chosen.CandidateAccountingIds = ambiguousCandidates
-                .Select(c => c.AccountingTransaction.Id)
+            // Tri global
+            var sortedCandidates = allCandidates
+                .OrderByDescending(c => c.Score)
+                .ThenBy(c => Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days))
+                .ThenBy(c => Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount))
+                .ThenBy(c => c.AccountingTransaction.Id)
                 .ToList();
 
-                if (ambiguousCandidates.Count > 1)
-                {
-                    chosen.IsAmbiguous = true;
-                }
-            
+            var usedBank = new HashSet<string>();
+            var usedAccounting = new HashSet<string>();
 
-                results.Add(chosen);
+            var results = new List<MatchResult>();
 
-                availableAccounting.Remove(chosen.AccountingTransaction);
+            foreach (var candidate in sortedCandidates)
+            {
+                if (usedBank.Contains(candidate.BankTransaction.Id))
+                    continue;
+
+                if (usedAccounting.Contains(candidate.AccountingTransaction.Id))
+                    continue;
+
+                // trouver tous les candidats équivalents
+                var sameCandidates = sortedCandidates
+                    .Where(c =>
+                        c.BankTransaction.Id == candidate.BankTransaction.Id &&
+                        c.Score == candidate.Score &&
+                        Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days)
+                        == Math.Abs((candidate.BankTransaction.Date - candidate.AccountingTransaction.Date).Days) &&
+                        Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount)
+                        == Math.Abs(candidate.BankTransaction.Amount - candidate.AccountingTransaction.Amount))
+                    .ToList();
+
+                candidate.IsAmbiguous = sameCandidates.Count > 1;
+
+                candidate.CandidateAccountingIds = sameCandidates
+                    .Select(c => c.AccountingTransaction.Id)
+                    .ToList();
+
+                results.Add(candidate);
+
+                usedBank.Add(candidate.BankTransaction.Id);
+                usedAccounting.Add(candidate.AccountingTransaction.Id);
             }
 
             return results;
