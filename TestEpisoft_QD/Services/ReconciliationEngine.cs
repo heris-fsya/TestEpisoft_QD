@@ -5,15 +5,37 @@ using TestEpisoft_QD.Models;
 
 namespace TestEpisoft_QD.Services
 {
+
+
     public class ReconciliationEngine
     {
+        private Dictionary<string, int> _config;
+
         public List<MatchResult> Reconcile(
+            List<Transaction> bankTransactions,
+            List<Transaction> accountingTransactions)
+        {
+            var candidates = GenerateCandidates(bankTransactions, accountingTransactions);
+
+            var sortedCandidates = SortCandidates(candidates);
+
+            var results = SelectBestMatches(sortedCandidates);
+
+            return results;
+        }
+
+        public ReconciliationEngine(Dictionary<string, int> config)
+        {
+            _config = config;
+        }
+
+        // Générer tous les matchs possibles
+        public List<MatchResult> GenerateCandidates(
             List<Transaction> bankTransactions,
             List<Transaction> accountingTransactions)
         {
             var allCandidates = new List<MatchResult>();
 
-            // Générer tous les candidats
             foreach (var bank in bankTransactions)
             {
                 foreach (var acc in accountingTransactions)
@@ -25,14 +47,23 @@ namespace TestEpisoft_QD.Services
                 }
             }
 
-            // Tri global
-            var sortedCandidates = allCandidates
+            return allCandidates;
+        }
+
+        //  Trier les candidats
+        public List<MatchResult> SortCandidates(List<MatchResult> candidates)
+        {
+            return candidates
                 .OrderByDescending(c => c.Score)
                 .ThenBy(c => Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days))
                 .ThenBy(c => Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount))
                 .ThenBy(c => c.AccountingTransaction.Id)
                 .ToList();
+        }
 
+        // Sélectionner les meilleurs matchs
+        public List<MatchResult> SelectBestMatches(List<MatchResult> sortedCandidates)
+        {
             var usedBank = new HashSet<string>();
             var usedAccounting = new HashSet<string>();
 
@@ -46,22 +77,7 @@ namespace TestEpisoft_QD.Services
                 if (usedAccounting.Contains(candidate.AccountingTransaction.Id))
                     continue;
 
-                // trouver tous les candidats équivalents
-                var sameCandidates = sortedCandidates
-                    .Where(c =>
-                        c.BankTransaction.Id == candidate.BankTransaction.Id &&
-                        c.Score == candidate.Score &&
-                        Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days)
-                        == Math.Abs((candidate.BankTransaction.Date - candidate.AccountingTransaction.Date).Days) &&
-                        Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount)
-                        == Math.Abs(candidate.BankTransaction.Amount - candidate.AccountingTransaction.Amount))
-                    .ToList();
-
-                candidate.IsAmbiguous = sameCandidates.Count > 1;
-
-                candidate.CandidateAccountingIds = sameCandidates
-                    .Select(c => c.AccountingTransaction.Id)
-                    .ToList();
+                MarkAmbiguous(candidate, sortedCandidates);
 
                 results.Add(candidate);
 
@@ -72,24 +88,62 @@ namespace TestEpisoft_QD.Services
             return results;
         }
 
-        private MatchResult Evaluate(Transaction bank, Transaction acc)
+        //Détecter les cas ambigus
+        public void MarkAmbiguous(MatchResult candidate, List<MatchResult> allCandidates)
+        {
+            var sameCandidates = allCandidates
+                .Where(c =>
+                    c.BankTransaction.Id == candidate.BankTransaction.Id &&
+                    c.Score == candidate.Score &&
+                    Math.Abs((c.BankTransaction.Date - c.AccountingTransaction.Date).Days)
+                    == Math.Abs((candidate.BankTransaction.Date - candidate.AccountingTransaction.Date).Days) &&
+                    Math.Abs(c.BankTransaction.Amount - c.AccountingTransaction.Amount)
+                    == Math.Abs(candidate.BankTransaction.Amount - candidate.AccountingTransaction.Amount))
+                .ToList();
+
+            candidate.IsAmbiguous = sameCandidates.Count > 1;
+
+            candidate.CandidateAccountingIds = sameCandidates
+                .Select(c => c.AccountingTransaction.Id)
+                .ToList();
+        }
+
+        // Appliquer les règles
+        public MatchResult Evaluate(Transaction bank, Transaction acc)
         {
             var dateDiff = Math.Abs((bank.Date - acc.Date).Days);
             var amountDiff = Math.Abs(bank.Amount - acc.Amount);
 
-            int rule = 0;
+            int rule = DetermineRule(dateDiff, amountDiff);
 
-            if (dateDiff == 0 && amountDiff == 0)
-                rule = 1;
-            else if (amountDiff == 0 && dateDiff <= 1)
-                rule = 2;
-            else if (dateDiff == 0 && amountDiff <= 5)
-                rule = 3;
-            else if (dateDiff <= 2 && amountDiff <= 5)
-                rule = 4;
-            else
+            if (rule == 0)
                 return null;
 
+            return CreateMatchFromRule(rule, bank, acc);
+        }
+
+        //  Calcule de la règle
+        public int DetermineRule(int dateDiff, decimal amountDiff)
+        {
+            if (dateDiff == 0 && amountDiff == 0)
+                return 1;
+
+            else if (amountDiff == 0 && dateDiff <= _config["DATE_TOLERANCE_AMOUNT"])
+                return 2;
+
+            else if (dateDiff == 0 && amountDiff <= _config["AMOUNT_TOLERANCE_DATE"])
+                return 3;
+
+            else if (dateDiff <= _config["DATE_TOLERANCE_GLOBAL"] &&
+         amountDiff <= _config["AMOUNT_TOLERANCE_GLOBAL"])
+                return 4;
+
+            return 0;
+        }
+
+        // Créer le résultat selon la règle
+        public MatchResult CreateMatchFromRule(int rule, Transaction bank, Transaction acc)
+        {
             switch (rule)
             {
                 case 1:
@@ -109,7 +163,8 @@ namespace TestEpisoft_QD.Services
             }
         }
 
-        private MatchResult CreateMatch(Transaction bank, Transaction acc, int score, string rule)
+        //  Création match 
+        public MatchResult CreateMatch(Transaction bank, Transaction acc, int score, string rule)
         {
             return new MatchResult
             {

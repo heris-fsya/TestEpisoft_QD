@@ -13,7 +13,10 @@ namespace TestEpisoft_QD
 
             var bankTransactions = reader.ReadTransactions("Data/bank.csv", "Bank");
             var accountingTransactions = reader.ReadTransactions("Data/accounting.csv", "Accounting");
-            var engine = new ReconciliationEngine();
+            var configLoader = new RuleConfigLoader();
+            var config = configLoader.Load("rules.config");
+
+            var engine = new ReconciliationEngine(config);
 
             var matches = engine.Reconcile(bankTransactions, accountingTransactions);
 
