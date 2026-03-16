@@ -6,8 +6,16 @@ using System.Collections.Generic;
 
 namespace TestEpisoft_QD.Tests
 {
+    /// <summary>
+    /// Tests unitaires pour la classe <see cref="ReconciliationEngine"/>.
+    /// Vérifie l'évaluation des correspondances et les utilitaires (tri, ambiguïté, règles).
+    /// </summary>
     public class ReconciliationEngineTests
     {
+        /// <summary>
+        /// Crée une instance de l'engine avec une configuration de tolérances
+        /// réutilisable dans plusieurs tests.
+        /// </summary>
         private ReconciliationEngine CreateEngine()
         {
             var config = new Dictionary<string, int>
@@ -21,6 +29,10 @@ namespace TestEpisoft_QD.Tests
             return new ReconciliationEngine(config);
         }
 
+        /// <summary>
+        /// Teste qu'une transaction identique sur la date et le montant retourne un score à 100
+        /// et que la règle appliquée est "Exact Match".
+        /// </summary>
         [Fact]
         public void ExactMatch_ShouldReturnScore100()
         {
@@ -40,13 +52,18 @@ namespace TestEpisoft_QD.Tests
                 Amount = -42.99m
             };
 
+            // Act
             var result = engine.Evaluate(bank, acc);
 
+            // Assert
             Assert.NotNull(result);
             Assert.Equal(100, result.Score);
             Assert.Equal("Exact Match", result.RuleApplied);
         }
 
+        /// <summary>
+        /// Même montant mais date décalée d'un jour => score attendu 85 (règle de tolérance date).
+        /// </summary>
         [Fact]
         public void SameAmount_DatePlusMinusOneDay_ShouldReturnScore85()
         {
@@ -66,12 +83,17 @@ namespace TestEpisoft_QD.Tests
                 Amount = -42.99m
             };
 
+            // Act
             var result = engine.Evaluate(bank, acc);
 
+            // Assert
             Assert.NotNull(result);
             Assert.Equal(85, result.Score);
         }
 
+        /// <summary>
+        /// Même date mais montant dans la tolérance spécifique => score attendu 70.
+        /// </summary>
         [Fact]
         public void SameDate_AmountTolerance_ShouldReturnScore70()
         {
@@ -91,12 +113,18 @@ namespace TestEpisoft_QD.Tests
                 Amount = -47.99m
             };
 
+            // Act
             var result = engine.Evaluate(bank, acc);
 
+            // Assert
             Assert.NotNull(result);
             Assert.Equal(70, result.Score);
         }
 
+        /// <summary>
+        /// Cas où ni la date ni le montant ne sont strictement proches mais entrent dans la
+        /// tolérance globale => score attendu 55.
+        /// </summary>
         [Fact]
         public void GlobalTolerance_ShouldReturnScore55()
         {
@@ -116,12 +144,17 @@ namespace TestEpisoft_QD.Tests
                 Amount = -47.99m
             };
 
+            // Act
             var result = engine.Evaluate(bank, acc);
 
+            // Assert
             Assert.NotNull(result);
             Assert.Equal(55, result.Score);
         }
 
+        /// <summary>
+        /// Différence trop importante => pas de correspondance (retourne null).
+        /// </summary>
         [Fact]
         public void TooLargeDifference_ShouldNotMatch()
         {
@@ -141,11 +174,17 @@ namespace TestEpisoft_QD.Tests
                 Amount = -50
             };
 
+            // Act
             var result = engine.Evaluate(bank, acc);
 
+            // Assert
             Assert.Null(result);
         }
 
+        /// <summary>
+        /// Vérifie que la méthode <see cref="ReconciliationEngine.MarkAmbiguous"/> marque correctement
+        /// un candidat comme ambigu lorsque plusieurs correspondances équivalentes existent.
+        /// </summary>
         [Fact]
         public void MarkAmbiguous_ShouldDetectAmbiguity()
         {
@@ -171,12 +210,17 @@ namespace TestEpisoft_QD.Tests
 
             var all = new List<MatchResult> { candidate1, candidate2 };
 
+            // Act: marquer l'ambiguïté à partir d'un candidat parmi la liste
             engine.MarkAmbiguous(candidate1, all);
 
+            // Assert: le candidat devient ambigu et connaît les identifiants candidats possibles
             Assert.True(candidate1.IsAmbiguous);
             Assert.Equal(2, candidate1.CandidateAccountingIds.Count);
         }
 
+        /// <summary>
+        /// Vérifie que le tri des candidats ordonne par score décroissant.
+        /// </summary>
         [Fact]
         public void SortCandidates_ShouldOrderByScore()
         {
@@ -190,11 +234,16 @@ namespace TestEpisoft_QD.Tests
                 new MatchResult { BankTransaction = bank, AccountingTransaction = new Transaction{Id="A2"}, Score = 100 }
             };
 
+            // Act
             var sorted = engine.SortCandidates(candidates);
 
+            // Assert: le premier élément doit avoir le score le plus élevé
             Assert.Equal(100, sorted[0].Score);
         }
 
+        /// <summary>
+        /// Teste la détermination de règle : zéro décalage => règle 1 (Exact Match).
+        /// </summary>
         [Fact]
         public void DetermineRule_ExactMatch_ShouldReturnRule1()
         {
@@ -205,6 +254,9 @@ namespace TestEpisoft_QD.Tests
             Assert.Equal(1, rule);
         }
 
+        /// <summary>
+        /// Teste la détermination de règle : décalage date dans la tolérance => règle 2.
+        /// </summary>
         [Fact]
         public void DetermineRule_DateTolerance_ShouldReturnRule2()
         {
