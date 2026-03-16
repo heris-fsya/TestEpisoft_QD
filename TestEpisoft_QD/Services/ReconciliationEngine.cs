@@ -5,8 +5,12 @@ using TestEpisoft_QD.Models;
 
 namespace TestEpisoft_QD.Services
 {
+
+
     public class ReconciliationEngine
     {
+        private Dictionary<string, int> _config;
+
         public List<MatchResult> Reconcile(
             List<Transaction> bankTransactions,
             List<Transaction> accountingTransactions)
@@ -18,6 +22,11 @@ namespace TestEpisoft_QD.Services
             var results = SelectBestMatches(sortedCandidates);
 
             return results;
+        }
+
+        public ReconciliationEngine(Dictionary<string, int> config)
+        {
+            _config = config;
         }
 
         // Générer tous les matchs possibles
@@ -119,13 +128,14 @@ namespace TestEpisoft_QD.Services
             if (dateDiff == 0 && amountDiff == 0)
                 return 1;
 
-            if (amountDiff == 0 && dateDiff <= 1)
+            else if (amountDiff == 0 && dateDiff <= _config["DATE_TOLERANCE_AMOUNT"])
                 return 2;
 
-            if (dateDiff == 0 && amountDiff <= 5)
+            else if (dateDiff == 0 && amountDiff <= _config["AMOUNT_TOLERANCE_DATE"])
                 return 3;
 
-            if (dateDiff <= 2 && amountDiff <= 5)
+            else if (dateDiff <= _config["DATE_TOLERANCE_GLOBAL"] &&
+         amountDiff <= _config["AMOUNT_TOLERANCE_GLOBAL"])
                 return 4;
 
             return 0;

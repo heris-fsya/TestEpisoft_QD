@@ -1,42 +1,46 @@
-# TestEpisoft_QD
 # Mini moteur de rapprochement bancaire / comptable
 
 ## Présentation du projet
 
-Ce projet consiste à construire un **mini moteur de rapprochement** entre un flux bancaire et un flux comptable à partir de deux fichiers CSV.
+Ce projet consiste à développer un **mini moteur de rapprochement entre un flux bancaire et un flux comptable** à partir de deux fichiers CSV.
 
-L’objectif du programme est d’identifier les transactions qui correspondent entre :
+Le programme lit deux sources de données :
 
-* un fichier **bank.csv** représentant le flux bancaire
-* un fichier **accounting.csv** représentant le flux comptable
+* **bank.csv** : flux des transactions bancaires
+* **accounting.csv** : flux des transactions comptables
 
-Le moteur compare les transactions selon plusieurs critères simples (principalement **la date et le montant**) afin de trouver les correspondances les plus probables.
+L’objectif est d’identifier les transactions qui correspondent entre ces deux flux en appliquant plusieurs **règles de rapprochement** basées principalement sur :
 
-Chaque correspondance reçoit un **score** en fonction de la règle utilisée.
+* la **date**
+* le **montant**
 
-Le programme produit ensuite deux fichiers de sortie :
+Chaque correspondance reçoit un **score** qui indique le niveau de confiance du rapprochement.
 
-* **matches.csv** : la liste des correspondances trouvées
-* **report.txt** : un rapport récapitulatif contenant différentes statistiques sur le rapprochement
+À la fin de l'exécution, le programme génère deux fichiers :
 
-Le but était de construire quelque chose de **fonctionnel, lisible et facilement testable**, plutôt qu’un moteur extrêmement complexe.
+* **matches.csv** : liste des rapprochements trouvés
+* **report.txt** : rapport contenant des statistiques sur le rapprochement (nombre de transactions, correspondances trouvées, cas ambigus, etc.)
+
+Le moteur fonctionne en générant toutes les correspondances possibles, puis en sélectionnant les meilleures en fonction du score et de différents critères de tri.
+Les règles de tolérance utilisées pour déterminer les correspondances peuvent être paramétrées via un fichier de configuration, ce qui permet d’adapter le comportement du moteur sans modifier le code.
 
 ---
 
 # Prérequis
 
-Pour exécuter le projet il faut :
+Pour exécuter ce projet il faut :
 
 * **.NET Framework 4.6 ou supérieur**
-* un environnement permettant de compiler du C# (Visual Studio, Rider ou VS Code)
+* un environnement de développement compatible C# (Visual Studio recommandé)
 
 Les fichiers de données doivent être placés dans le dossier :
 
 ```
 Data/
+rules.config
 ```
 
-avec :
+avec les deux fichiers suivants :
 
 ```
 Data/bank.csv
@@ -47,18 +51,19 @@ Data/accounting.csv
 
 # Comment exécuter le programme
 
-Depuis le dossier du projet :
+Le programme peut être exécuté sans environnement de développement une fois l’exécutable généré.
 
-```bash
-dotnet run
-```
+1. Aller dans le dossier : bin/Debug/
+2. Lancer le fichier : TestEpisoft_QD.exe
 
 Le programme va :
 
-1. charger les transactions bancaires et comptables depuis les fichiers CSV
+1. lire les transactions bancaires et comptables
 2. appliquer les règles de rapprochement
-3. afficher les correspondances trouvées dans la console
-4. générer deux fichiers dans le dossier du projet :
+3. afficher les correspondances dans la console
+4. générer les fichiers de sortie.
+
+Les fichiers produits sont :
 
 ```
 matches.csv
@@ -69,7 +74,7 @@ report.txt
 
 # Règles de rapprochement
 
-Les règles utilisées sont volontairement simples et basées sur la date et le montant.
+Le moteur utilise plusieurs règles simples basées sur la date et le montant.
 
 | Règle                                    | Condition                       | Score |
 | ---------------------------------------- | ------------------------------- | ----- |
@@ -78,126 +83,164 @@ Les règles utilisées sont volontairement simples et basées sur la date et le 
 | Date identique avec tolérance de montant | même date, montant ±5           | 70    |
 | Tolérance date et montant                | date ±2 jours et montant ±5     | 55    |
 
+Les seuils de tolérance utilisés par ces règles sont configurables via le fichier rules.config.
+Cela permet d’ajuster facilement le comportement du moteur sans avoir à modifier ou recompiler le code.
 Lorsqu'il existe **plusieurs correspondances possibles avec exactement les mêmes critères**, le cas est marqué comme **ambigu**.
 
-Dans ce cas, la liste des transactions comptables candidates est conservée afin de pouvoir les analyser dans le rapport.
+Dans ce cas, le moteur conserve la liste des transactions comptables candidates afin de pouvoir les analyser dans le rapport.
 
 ---
 
 # Les hypothèses & choix
 
-Le temps estimé pour cet exercice étant d’environ **6 heures**, certains choix ont été faits pour garder une solution simple et claire :
+Le temps estimé pour réaliser cet exercice étant d’environ **6 heures**, certains choix ont été faits pour garder une solution simple et compréhensible :
 
-* la comparaison se base uniquement sur **la date et le montant**
-* la **description n’est pas utilisée dans le calcul du score**
-* une transaction comptable ne peut être utilisée **qu’une seule fois**
-* le moteur génère **toutes les correspondances possibles**, puis sélectionne les meilleures selon le score et certains critères de tri
+* la comparaison repose uniquement sur **la date et le montant**
+* la **description de la transaction n'est pas utilisée dans le calcul du score**
+* une transaction comptable ne peut être associée **qu'à une seule transaction bancaire**
+* le moteur génère toutes les correspondances possibles avant de sélectionner les meilleures
 
-J’ai également découpé la logique en plusieurs méthodes afin de rendre le code **plus lisible et plus facile à tester**.
+La logique du moteur a également été découpée en plusieurs méthodes afin de rendre le code **plus lisible et plus facilement testable**.
+
+---
+
+# Tests unitaires
+
+Des **tests unitaires** ont été ajoutés afin de vérifier les principales parties du programme.
+
+Les tests couvrent notamment :
+
+### Le moteur de rapprochement
+
+* vérification des règles de score
+* génération des correspondances possibles
+* tri des correspondances
+* détection des cas ambigus
+* fonctionnement global du moteur
+
+### La lecture des fichiers CSV
+
+Deux scénarios principaux sont testés :
+
+1. **Parsing nominal**
+
+   Vérifie qu’un fichier CSV valide est correctement lu :
+
+   * nombre de lignes correct
+   * valeurs correctement interprétées (date, description, montant)
+
+2. **Parsing avec erreur**
+
+   Vérifie qu'une ligne invalide ne provoque pas de crash du programme (par exemple :
+
+   * date invalide
+   * montant invalide
+   * colonnes manquantes)
+
+Ces tests permettent de sécuriser les parties principales du projet.
 
 ---
 
 # Dans un contexte où cet outil serait utilisé en production
 
-Si cet outil devait être utilisé dans un contexte réel, plusieurs éléments devraient être ajoutés :
+Dans un contexte réel, plusieurs améliorations seraient nécessaires :
 
-* une **gestion d’erreurs plus robuste** lors de la lecture des fichiers
-* un système de **journalisation (logs)**
-* une **configuration des règles de rapprochement**
-* des **tests unitaires plus complets**
-* une gestion plus avancée des **cas ambigus**
+* ajouter un **système de journalisation (logs)**
+* améliorer la **gestion des erreurs de lecture des fichiers**
+* améliorer la **gestion et la validation des paramètres de configuration**
+* améliorer la gestion des **cas ambigus**
+* ajouter davantage de **tests automatisés**
 
-Cela permettrait de rendre l’outil plus fiable et plus maintenable.
+Cela permettrait de rendre l’outil plus robuste et plus facile à maintenir.
 
 ---
 
 # Les limites
 
-Certaines choses ne sont pas gérées actuellement ou seulement de manière simplifiée :
+Certaines fonctionnalités ne sont pas gérées ou seulement de manière simplifiée :
 
-* la **similarité des descriptions** (par exemple AMAZON vs AMAZON MARKETPLACE)
+* la comparaison des **descriptions de transactions**
 * les **transactions fractionnées ou regroupées**
-* les différences de **format ou de devise**
-* la gestion de **volumes de données très importants**
-* une analyse plus poussée des **cas ambigus**
+* les différences de **formats bancaires**
+* la gestion de **très gros volumes de transactions**
+* l’analyse avancée des cas ambigus
 
-Ces points pourraient être améliorés dans une version plus avancée du moteur.
+Ces limitations sont principalement liées au temps limité pour la réalisation de l'exercice.
 
 ---
 
 # Les améliorations possibles (par ordre de priorité)
 
-1. Ajouter une **comparaison des descriptions** pour améliorer la qualité des correspondances.
-2. Rendre les **règles de rapprochement configurables** (par exemple via un fichier de configuration).
-3. Améliorer la gestion et l’analyse des **cas ambigus**.
-4. Optimiser l’algorithme pour gérer des **volumes de transactions plus importants**.
-5. Ajouter une **interface en ligne de commande plus complète**.
-6. Ajouter une **interface graphique ou un outil de visualisation** pour analyser les résultats.
+### 1. Score progressif basé sur l’écart des données
+
+Actuellement, le score fonctionne par **paliers fixes** selon la règle appliquée.
+
+Une amélioration importante serait de remplacer ce système par un **score progressif calculé automatiquement**.
+
+Le score pourrait être calculé à partir :
+
+* de l’écart de **jours entre les dates**
+* de l’écart de **montant**
+
+Par exemple avec une formule mathématique où :
+
+* plus l'écart de date est grand → plus le score diminue
+* plus l'écart de montant est important → plus le score diminue
+
+Cela permettrait d’obtenir un moteur de rapprochement **plus précis et plus flexible**.
+
+---
+
+### 2. Analyse des descriptions de transactions
+
+Comparer les descriptions pour détecter des correspondances même si les libellés sont légèrement différents
+(ex : *AMAZON PAYMENT* vs *CARD AMAZON MARKETPLACE*).
+
+---
+
+### 3. Amélioration des performances
+
+Optimiser l’algorithme pour traiter des volumes de transactions beaucoup plus importants.
+
+---
+
+### 4. Outil d’analyse des résultats
+
+Ajouter une interface ou un outil permettant d’analyser plus facilement les correspondances et les cas ambigus.
 
 ---
 
 # Ce que je testerais en plus et pourquoi
 
-Pour un projet réel, je mettrais en place plusieurs types de tests :
+Pour un projet utilisé en production, j’ajouterais notamment :
 
-### Tests des règles de rapprochement
+* des tests avec **de gros volumes de données**
+* des tests avec **transactions très proches mais différentes**
+* des tests avec **fichiers partiellement corrompus**
+* des tests avec **transactions dupliquées**
 
-Vérifier que chaque règle fonctionne correctement :
-
-* correspondance exacte
-* tolérance de date
-* tolérance de montant
-
----
-
-### Tests des cas ambigus
-
-Vérifier que les situations où plusieurs transactions peuvent correspondre :
-
-* sont correctement détectées
-* apparaissent bien dans le rapport
-
----
-
-### Tests des transactions non rapprochées
-
-Vérifier que les statistiques du **report.txt** sont correctes :
-
-* nombre total de transactions
-* nombre de transactions rapprochées
-* nombre de transactions restantes
-
----
-
-### Tests de cas limites
-
-Par exemple :
-
-* plusieurs transactions identiques
-* petites différences de montant (arrondis)
-* transactions très proches dans le temps
-
-Ces tests permettent de s’assurer que le moteur reste fiable dans des situations réalistes.
+Ces cas sont fréquents dans les données financières réelles.
 
 ---
 
 # Comment lancer les tests
 
-Les tests unitaires peuvent être lancés avec :
+Les tests unitaires peuvent être exécutés via Visual Studio ou en ligne de commande :
 
-```bash
+```
 dotnet test
 ```
 
-Les tests ciblent principalement la classe **ReconciliationEngine**, qui contient la logique principale du moteur de rapprochement.
+Les tests ciblent principalement :
 
-Le moteur a été structuré en plusieurs méthodes afin de faciliter l’écriture de tests unitaires.
+* le moteur de rapprochement
+* la lecture et le parsing des fichiers CSV
 
 ---
 
 # Remarque personnelle
 
-C’est mon premier projet de ce type en dehors d’un cadre scolaire.
-J’ai essayé de privilégier un code **simple, lisible et compréhensible**, afin qu’il soit facile à relire et à améliorer.
+Ce projet a été réalisé dans le cadre d’un **exercice technique estimé à environ 6 heures**.
 
-Mon objectif principal était de proposer une solution **fonctionnelle et structurée**, tout en restant dans le temps estimé pour l’exercice.
+C’est également l’un de mes premiers projets réalisés dans un contexte proche d’un environnement professionnel.
+J’ai donc essayé de privilégier une approche **simple, lisible et structurée**, afin que le code reste facile à comprendre et à faire évoluer.

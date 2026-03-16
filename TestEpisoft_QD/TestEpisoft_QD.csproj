@@ -73,6 +73,7 @@
     <Compile Include="Services\MatchExporter.cs" />
     <Compile Include="Services\ReconciliationEngine.cs" />
     <Compile Include="Services\ReportGenerator.cs" />
+    <Compile Include="Services\RuleConfigLoader.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -87,6 +88,9 @@
     <None Include="obj\Debug\TestEpisoft_QD.csproj.AssemblyReference.cache" />
     <None Include="obj\Debug\TestEpisoft_QD.csproj.CoreCompileInputs.cache" />
     <None Include="packages.config" />
+    <None Include="rules.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="bin\Debug\TestEpisoft_QD.exe" />
