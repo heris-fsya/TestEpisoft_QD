@@ -8,11 +8,23 @@ namespace TestEpisoft_QD.Tests
 {
     public class ReconciliationEngineTests
     {
+        private ReconciliationEngine CreateEngine()
+        {
+            var config = new Dictionary<string, int>
+            {
+                { "DATE_TOLERANCE_AMOUNT", 1 },
+                { "AMOUNT_TOLERANCE_DATE", 5 },
+                { "DATE_TOLERANCE_GLOBAL", 2 },
+                { "AMOUNT_TOLERANCE_GLOBAL", 5 }
+            };
+
+            return new ReconciliationEngine(config);
+        }
+
         [Fact]
         public void ExactMatch_ShouldReturnScore100()
         {
-            // Arrange
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction
             {
@@ -28,21 +40,17 @@ namespace TestEpisoft_QD.Tests
                 Amount = -42.99m
             };
 
-            // Act
             var result = engine.Evaluate(bank, acc);
 
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(100, result.Score);
             Assert.Equal("Exact Match", result.RuleApplied);
         }
 
-
         [Fact]
-        public void MontantIdentique_DatePlusUnJour_Score85()
+        public void SameAmount_DatePlusMinusOneDay_ShouldReturnScore85()
         {
-            // Arrange
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction
             {
@@ -58,21 +66,16 @@ namespace TestEpisoft_QD.Tests
                 Amount = -42.99m
             };
 
-            // Act
             var result = engine.Evaluate(bank, acc);
 
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(85, result.Score);
         }
 
-
-
         [Fact]
-        public void DateIdentique_MontantplusCinqMax_Score70()
+        public void SameDate_AmountTolerance_ShouldReturnScore70()
         {
-            // Arrange
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction
             {
@@ -88,22 +91,16 @@ namespace TestEpisoft_QD.Tests
                 Amount = -47.99m
             };
 
-            // Act
             var result = engine.Evaluate(bank, acc);
 
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(70, result.Score);
         }
 
-
-
-
         [Fact]
-        public void MontantplusCinqMax_DatePlusDeuxJour_Score55()
+        public void GlobalTolerance_ShouldReturnScore55()
         {
-            // Arrange
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction
             {
@@ -119,20 +116,16 @@ namespace TestEpisoft_QD.Tests
                 Amount = -47.99m
             };
 
-            // Act
             var result = engine.Evaluate(bank, acc);
 
-            // Assert
             Assert.NotNull(result);
             Assert.Equal(55, result.Score);
         }
 
-
-
         [Fact]
-        public void DifferenceTropGrande_DoiventPasMatcher()
+        public void TooLargeDifference_ShouldNotMatch()
         {
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction
             {
@@ -156,7 +149,7 @@ namespace TestEpisoft_QD.Tests
         [Fact]
         public void MarkAmbiguous_ShouldDetectAmbiguity()
         {
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction { Id = "B1", Date = new DateTime(2023, 10, 1), Amount = -50 };
 
@@ -185,11 +178,10 @@ namespace TestEpisoft_QD.Tests
             Assert.Equal(2, candidate1.CandidateAccountingIds.Count);
         }
 
-
         [Fact]
         public void SortCandidates_ShouldOrderByScore()
         {
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var bank = new Transaction { Id = "B1", Date = DateTime.Now, Amount = -50 };
 
@@ -204,25 +196,24 @@ namespace TestEpisoft_QD.Tests
             Assert.Equal(100, sorted[0].Score);
         }
 
-        public void DetermineRule_ExactMatch_ReturnRule1()
+        [Fact]
+        public void DetermineRule_ExactMatch_ShouldReturnRule1()
         {
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var rule = engine.DetermineRule(0, 0);
 
             Assert.Equal(1, rule);
         }
 
-
         [Fact]
-        public void DetermineRule_DateTolerance_ReturnRule2()
+        public void DetermineRule_DateTolerance_ShouldReturnRule2()
         {
-            var engine = new ReconciliationEngine();
+            var engine = CreateEngine();
 
             var rule = engine.DetermineRule(1, 0);
 
             Assert.Equal(2, rule);
         }
-
     }
 }
