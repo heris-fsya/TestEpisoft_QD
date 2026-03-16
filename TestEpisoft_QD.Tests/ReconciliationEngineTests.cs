@@ -152,7 +152,6 @@ namespace TestEpisoft_QD.Tests
             var engine = CreateEngine();
 
             var bank = new Transaction { Id = "B1", Date = new DateTime(2023, 10, 1), Amount = -50 };
-
             var acc1 = new Transaction { Id = "A1", Date = new DateTime(2023, 10, 1), Amount = -50 };
             var acc2 = new Transaction { Id = "A2", Date = new DateTime(2023, 10, 1), Amount = -50 };
 
