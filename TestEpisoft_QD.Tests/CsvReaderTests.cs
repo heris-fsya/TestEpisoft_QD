@@ -46,7 +46,6 @@ BADDATE,Coffee,-2.00");
 
             // Assert
             Assert.Equal(2, result.Count);
-
             Assert.Equal("Test", result[0].Description);
             Assert.Equal(-10.50m, result[0].Amount);
             Assert.Equal("Bank", result[0].Source);

@@ -17,26 +17,21 @@ namespace TestEpisoft_QD.Services
             int totalBank = bankTransactions.Count;
             int totalAccounting = accountingTransactions.Count;
             int matched = matches.Count;
-
             int unmatchedBank = totalBank - matched;
             int unmatchedAccounting = totalAccounting - matched;
-
             int weakMatches = matches.Count(m => m.Score < 85);
 
             var ambiguous = matches.Where(m => m.IsAmbiguous).ToList();
-
             var report = new List<string>();
 
             report.Add("=== RECONCILIATION REPORT ===");
             report.Add("");
-
             report.Add($"Nb total banque : {totalBank}");
             report.Add($"Nb total compta : {totalAccounting}");
             report.Add($"Nb matchés : {matched}");
             report.Add($"Nb non matchés banque : {unmatchedBank}");
             report.Add($"Nb non matchés compta : {unmatchedAccounting}");
             report.Add($"Nb de matchs faibles (score < 85) : {weakMatches}");
-
             report.Add("");
             report.Add("=== CAS AMBIGUS ===");
 
@@ -48,14 +43,9 @@ namespace TestEpisoft_QD.Services
             {
                 foreach (var a in ambiguous)
                 {
-                   
                         report.Add($"BankId : {a.BankTransaction.Id} -> AccountingId possible : {string.Join(",", a.CandidateAccountingIds)} -> AccountingId choisi : {a.AccountingTransaction.Id}");
-                  
-                  
-
                 }
             }
-
             File.WriteAllLines(path, report, Encoding.UTF8);
         }
     }
